@@ -1,0 +1,32 @@
+name: Update GeoLite Country
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 3 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: geolite-country-release
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install MMDB reader
+        run: |
+          python3 -m venv "$RUNNER_TEMP/geolite-venv"
+          "$RUNNER_TEMP/geolite-venv/bin/pip" install --disable-pip-version-check maxminddb==3.3.0
+      - name: Check, validate and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+        run: "$RUNNER_TEMP/geolite-venv/bin/python" scripts/update_geolite_country.py
