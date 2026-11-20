@@ -181,7 +181,11 @@ def main():
         pages = api(base + "/releases?per_page=100", "--paginate", "--slurp")
         for release in (r for page in pages for r in page):
             if release["id"] != latest["id"] and release["tag_name"].startswith(PREFIX) and MARKER in (release.get("body") or ""):
-                gh("release", "delete", release["tag_name"], "--yes", "--cleanup-tag")
+                if release["draft"]:
+                    # Drafts cannot be resolved through the release-by-tag API.
+                    gh("api", base + "/releases/" + str(release["id"]), "--method", "DELETE")
+                else:
+                    gh("release", "delete", release["tag_name"], "--yes", "--cleanup-tag")
                 print("Removed an older managed release.")
 
 
