@@ -144,7 +144,13 @@ def main():
             )
             tag = PREFIX + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:8]
             gh("release", "create", tag, str(db), "--draft", "--title", "GeoLite Country", "--notes-file", str(notes))
-            release = api(base + "/releases/tags/" + tag)
+            # A draft has no published tag yet, so the release-by-tag endpoint
+            # returns 404. Find it in the authenticated releases listing instead.
+            pages = api(base + "/releases?per_page=100", "--paginate", "--slurp")
+            matches = [r for page in pages for r in page if r["tag_name"] == tag and r["draft"]]
+            if len(matches) != 1:
+                raise RuntimeError("Uploaded draft release could not be uniquely identified")
+            release = matches[0]
             if not metadata(release):
                 raise RuntimeError("Uploaded draft asset digest does not match; existing release was not changed")
             previous_latest = latest
